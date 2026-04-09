@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UnitEval — Evaluador de pruebas con IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#1D9E75;--brand-dim:#0F6E56;--brand-soft:#E1F5EE;
+  --bg:#f5f4f1;--surface:#ffffff;--surface2:#f8f7f4;
+  --border:#e2e0da;--border2:#d0cec8;
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#9b9a96;
+  --red:#A32D2D;--red-soft:#FCEBEB;
+  --amber:#854F0B;--amber-soft:#FAEEDA;
+  --green:#3B6D11;--green-soft:#EAF3DE;
+  --sidebar:240px;
+}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── TOPBAR ─────────────────────────────── */
+.topbar{height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0;flex-shrink:0;z-index:10}
+.logo{width:var(--sidebar);display:flex;align-items:center;gap:8px;padding:0 16px;border-right:1px solid var(--border);height:100%}
+.logo-icon{width:26px;height:26px;background:var(--brand);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:14px;height:14px;fill:white}
+.logo-name{font-size:14px;font-weight:600;letter-spacing:-0.3px}
+.logo-version{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--brand);background:var(--brand-soft);padding:2px 6px;border-radius:4px;margin-left:auto}
+.topbar-actions{display:flex;align-items:center;gap:8px;padding:0 16px;margin-left:auto}
+.topbar-status{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--brand)}
+
+/* ── LAYOUT ─────────────────────────────── */
+.workspace{display:flex;flex:1;overflow:hidden}
+
+/* ── SIDEBAR ─────────────────────────────── */
+.sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sidebar-block{padding:12px 10px 6px}
+.sidebar-label{font-size:10px;font-weight:500;color:var(--text3);letter-spacing:0.5px;text-transform:uppercase;padding:0 6px;margin-bottom:4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);transition:background 0.12s;user-select:none}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--brand-soft);color:var(--brand-dim);font-weight:500}
+.nav-item svg{width:14px;height:14px;flex-shrink:0}
+
+.project-card{margin:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.project-tag{font-size:10px;color:var(--text3);margin-bottom:3px}
+.project-name-row{display:flex;align-items:center;gap:6px}
+.project-dot{width:7px;height:7px;border-radius:50%;background:var(--brand);flex-shrink:0}
+.project-name{font-size:13px;font-weight:500;color:var(--text)}
+.project-path{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-btn{background:none;border:none;cursor:pointer;font-size:11px;color:var(--brand);font-family:'Sora',sans-serif;padding:0;margin-top:5px;text-decoration:underline;text-underline-offset:2px}
+
+.model-card{margin:0 10px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.model-label{font-size:10px;color:var(--text3);margin-bottom:4px}
+select{width:100%;font-size:12px;font-family:'Sora',sans-serif;color:var(--text);background:transparent;border:none;outline:none;cursor:pointer}
+
+.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px}
+
+/* ── MAIN PANEL ─────────────────────────── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.panel-topbar{padding:10px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface);flex-shrink:0}
+.panel-title{font-size:14px;font-weight:500;flex:1}
+.btn{padding:6px 14px;border-radius:6px;font-size:12px;font-family:'Sora',sans-serif;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text2);transition:background 0.12s}
+.btn:hover{background:var(--surface2)}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn-primary{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:500}
+.btn-primary:hover{background:var(--brand-dim)}
+.btn-danger{background:none;color:var(--red);border-color:var(--red)}
+
+/* ── PAGES ──────────────────────────────── */
+.page{display:none;flex:1;overflow-y:auto;padding:16px 20px;flex-direction:column;gap:12px;background:var(--bg)}
+.page.active{display:flex}
+
+/* ── STATS ──────────────────────────────── */
+.stats-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.stat-lbl{font-size:11px;color:var(--text3);margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace;line-height:1;color:var(--text)}
+.stat-val.green{color:var(--brand)}
+.stat-val.amber{color:var(--amber)}
+.stat-val.red{color:var(--red)}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* ── CARDS ──────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.card-head{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px}
+.card-head small{font-size:11px;font-weight:400;color:var(--text3);margin-left:auto}
+
+/* ── TEST LIST ──────────────────────────── */
+.test-list{display:flex;flex-direction:column}
+.test-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;transition:background 0.1s}
+.test-row:last-child{border-bottom:none}
+.test-row:hover{background:var(--surface2)}
+.test-row.selected{background:var(--brand-soft)}
+.badge{font-size:10px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;font-weight:500;flex-shrink:0}
+.badge-pass{background:var(--green-soft);color:var(--green)}
+.badge-fail{background:var(--red-soft);color:var(--red)}
+.badge-skip{background:#F1EFE8;color:#5F5E5A}
+.badge-err{background:var(--amber-soft);color:var(--amber)}
+.badge-pending{background:#F1EFE8;color:#5F5E5A}
+.test-fn{font-family:'JetBrains Mono',monospace;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.test-file-tag{font-size:11px;color:var(--text3);flex-shrink:0}
+.ai-tag{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--brand-soft);color:var(--brand-dim);flex-shrink:0}
+
+/* ── ANALYSIS PANEL ─────────────────────── */
+.analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ai-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.ai-head{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px}
+.ai-body{padding:12px 14px;font-size:12px;color:var(--text2);line-height:1.6}
+.ai-body code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);padding:2px 5px;border-radius:4px;color:var(--text)}
+.suggestion{display:flex;gap:8px;padding:8px 10px;border-radius:6px;background:var(--surface2);margin-top:8px;font-size:12px;line-height:1.5}
+.suggestion.warn{background:var(--amber-soft)}
+.suggestion.danger{background:var(--red-soft)}
+.suggestion.good{background:var(--green-soft)}
+
+/* ── CODE VIEWER ─────────────────────────── */
+.code-block{background:#1e1e1e;border-radius:8px;padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#d4d4d4;line-height:1.6;overflow-x:auto;white-space:pre}
+
+/* ── CONFIG PAGE ─────────────────────────── */
+.config-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.config-section h3{font-size:14px;font-weight:500;margin-bottom:12px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.field input,.field select{width:100%;padding:7px 10px;font-size:13px;font-family:'Sora',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);outline:none;transition:border 0.15s}
+.field input:focus,.field select:focus{border-color:var(--brand)}
+.field input[type=password]{letter-spacing:2px}
+
+/* ── EMPTY STATE ─────────────────────────── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:10px;color:var(--text3);text-align:center}
+.empty svg{opacity:0.3;margin-bottom:4px}
+.empty h3{font-size:14px;font-weight:500;color:var(--text2)}
+.empty p{font-size:12px;max-width:280px;line-height:1.6}
+
+/* ── MODAL ───────────────────────────────── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:none;align-items:center;justify-content:center}
+.modal-backdrop.open{display:flex}
+.modal{background:var(--surface);border-radius:12px;padding:20px 22px;width:440px;max-width:90vw;border:1px solid var(--border)}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:12px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+/* ── LOADING SPINNER ─────────────────────── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--brand);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+
+/* ── TOAST ───────────────────────────────── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity 0.2s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 16 16"><path d="M2 4h3v8H2zM6.5 2h3v12h-3zM11 6h3v6h-3z"/></svg>
+    </div>
+    <span class="logo-name">UnitEval</span>
+    <span class="logo-version">v0.1</span>
+  </div>
+  <div class="topbar-actions">
+    <div class="topbar-status">
+      <div class="status-dot"></div>
+      Servidor activo · localhost:8080
+    </div>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="project-card" id="project-card">
+      <div class="project-tag">Proyecto activo</div>
+      <div class="project-name-row">
+        <div class="project-dot" id="project-dot" style="background:var(--text3)"></div>
+        <span class="project-name" id="project-name-display">Sin proyecto</span>
+      </div>
+      <div class="project-path" id="project-path-display">—</div>
+      <button class="link-btn" onclick="openProjectModal()">Cambiar proyecto</button>
+    </div>
+
+    <div class="model-card">
+      <div class="model-label">Modelo de IA</div>
+      <select id="model-select" onchange="saveConfig()">
+        <option value="claude">Claude Sonnet 4</option>
+        <option value="openai">GPT-4o (OpenAI)</option>
+      </select>
+    </div>
+
+    <div class="sidebar-block">
+      <div class="sidebar-label">Navegación</div>
+      <div class="nav-item active" onclick="showPage('summary')" id="nav-summary">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zM2 7h8v2H2zM2 11h10v2H2z"/></svg>
+        Resumen
+      </div>
+      <div class="nav-item" onclick="showPage('tests')" id="nav-tests">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2h14v1.5l-5 4.5v6l-4-2V8L1 3.5V2z"/></svg>
+        Pruebas
+      </div>
+      <div class="nav-item" onclick="showPage('analysis')" id="nav-analysis">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4h1.5v4.5h-1.5zm0 5.5h1.5V12h-1.5z"/></svg>
+        Análisis IA
+      </div>
+      <div class="nav-item" onclick="showPage('config')" id="nav-config">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a3 3 0 100 6A3 3 0 008 5zM1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z"/></svg>
+        Configuración
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-dot"></div>
+      FastAPI · puerto 8080
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="panel-topbar">
+      <div class="panel-title" id="panel-title">Resumen</div>
+      <button class="btn" onclick="runScan()" id="btn-scan">
+        <span id="btn-scan-label">Escanear proyecto</span>
+      </button>
+      <button class="btn" onclick="runTests()" id="btn-run" disabled>
+        <span id="btn-run-label">Ejecutar pruebas</span>
+      </button>
+      <button class="btn btn-primary" onclick="analyzeAll()" id="btn-analyze" disabled>
+        <span id="btn-analyze-label">Evaluar con IA</span>
+      </button>
+    </div>
+
+    <!-- PAGE: SUMMARY -->
+    <div class="page active" id="page-summary">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-lbl">Total detectadas</div><div class="stat-val" id="stat-total">—</div><div class="stat-sub">pruebas</div></div>
+        <div class="stat-card"><div class="stat-lbl">Aprobadas</div><div class="stat-val green" id="stat-passed">—</div><div class="stat-sub" id="stat-passed-pct">—</div></div>
+        <div class="stat-card"><div class="stat-lbl">Fallidas</div><div class="stat-val red" id="stat-failed">—</div><div class="stat-sub">pytest</div></div>
+        <div class="stat-card"><div class="stat-lbl">Analizadas por IA</div><div class="stat-val amber" id="stat-analyzed">0</div><div class="stat-sub">de <span id="stat-analyzed-total">0</span></div></div>
+      </div>
+
+      <div class="card" id="summary-list-card">
+        <div class="card-head">
+          Últimas pruebas ejecutadas
+          <small id="summary-files-label">—</small>
+        </div>
+        <div class="test-list" id="summary-test-list">
+          <div class="empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <h3>Sin datos aún</h3>
+            <p>Selecciona un proyecto y haz clic en "Escanear proyecto" para comenzar.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: TESTS -->
+    <div class="page" id="page-tests">
+      <div class="card">
+        <div class="card-head">
+          Pruebas detectadas
+          <small id="tests-count-label">—</small>
+        </div>
+        <div class="test-list" id="tests-list">
+          <div class="empty">
+            <h3>Sin pruebas</h3>
+            <p>Escanea el proyecto para ver las pruebas detectadas.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: ANALYSIS -->
+    <div class="page" id="page-analysis">
+      <div id="analysis-content">
+        <div class="empty" style="padding:60px 24px">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          <h3>Sin análisis aún</h3>
+          <p>Selecciona una prueba en la lista y haz clic en "Evaluar con IA" para obtener retroalimentación.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: CONFIG -->
+    <div class="page" id="page-config">
+      <div class="config-section">
+        <h3>Proyecto</h3>
+        <div class="field">
+          <label>Ruta del proyecto</label>
+          <input type="text" id="cfg-project-path" placeholder="/home/usuario/mi_proyecto">
+        </div>
+        <button class="btn btn-primary" onclick="applyProjectPath()">Aplicar ruta</button>
+      </div>
+
+      <div class="config-section">
+        <h3>Claves de API</h3>
+        <div class="field">
+          <label>Anthropic API Key (Claude)</label>
+          <input type="password" id="cfg-anthropic-key" placeholder="sk-ant-...">
+        </div>
+        <div class="field">
+          <label>OpenAI API Key (GPT-4o)</label>
+          <input type="password" id="cfg-openai-key" placeholder="sk-...">
+        </div>
+        <button class="btn btn-primary" onclick="saveConfig()">Guardar configuración</button>
+      </div>
+
+      <div class="config-section">
+        <h3>Información</h3>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+          <p>UnitEval escanea archivos <code style="font-family:monospace;background:var(--surface2);padding:1px 4px;border-radius:3px">test_*.py</code> usando AST de Python.</p>
+          <p style="margin-top:8px">Ejecuta <code style="font-family:monospace;background:var(--surface2);padding:1px 4px;border-radius:3px">pytest</code> localmente y envía el código de cada prueba junto con su resultado a la IA seleccionada para obtener un análisis de calidad.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Seleccionar proyecto -->
+<div class="modal-backdrop" id="project-modal">
+  <div class="modal">
+    <h3>Seleccionar proyecto</h3>
+    <div class="field">
+      <label>Ruta absoluta al directorio del proyecto</label>
+      <input type="text" id="modal-project-path" placeholder="/home/usuario/mi_proyecto">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeProjectModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="applyProjectModal()">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Estado global ──────────────────────────────────────────────
+const state = {
+  projectPath: '',
+  model: 'claude',
+  scannedTests: [],   // [{file, abs_path, tests:[{name,lineno,code,docstring}]}]
+  runResults: [],     // [{name,file,function,outcome,duration,message}]
+  analyses: {},       // {testName: {quality,score,...}}
+  selectedTest: null,
+};
+
+// ── Navegación ─────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  const titles = {summary:'Resumen', tests:'Pruebas detectadas', analysis:'Análisis IA', config:'Configuración'};
+  document.getElementById('panel-title').textContent = titles[name] || name;
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+function toast(msg, duration=2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ── Config ─────────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const cfg = await api('/api/config');
+    state.projectPath = cfg.project_path || '';
+    state.model = cfg.model || 'claude';
+    document.getElementById('model-select').value = state.model;
+    document.getElementById('cfg-project-path').value = state.projectPath;
+    document.getElementById('cfg-anthropic-key').value = cfg.anthropic_api_key || '';
+    document.getElementById('cfg-openai-key').value = cfg.openai_api_key || '';
+    updateProjectDisplay();
+  } catch(e) { console.error('Error cargando config:', e); }
+}
+
+async function saveConfig() {
+  const model = document.getElementById('model-select').value;
+  const projectPath = document.getElementById('cfg-project-path').value || state.projectPath;
+  const anthropicKey = document.getElementById('cfg-anthropic-key').value;
+  const openaiKey = document.getElementById('cfg-openai-key').value;
+  state.model = model;
+  try {
+    await api('/api/config', 'POST', {
+      project_path: projectPath,
+      model,
+      anthropic_api_key: anthropicKey,
+      openai_api_key: openaiKey,
+    });
+    toast('Configuración guardada');
+  } catch(e) { toast('Error guardando config'); }
+}
+
+function applyProjectPath() {
+  const path = document.getElementById('cfg-project-path').value.trim();
+  if (!path) return toast('Ingresa una ruta válida');
+  state.projectPath = path;
+  updateProjectDisplay();
+  saveConfig();
+  toast('Proyecto actualizado');
+}
+
+// ── Modal proyecto ─────────────────────────────────────────────
+function openProjectModal() {
+  document.getElementById('modal-project-path').value = state.projectPath;
+  document.getElementById('project-modal').classList.add('open');
+}
+function closeProjectModal() {
+  document.getElementById('project-modal').classList.remove('open');
+}
+function applyProjectModal() {
+  const path = document.getElementById('modal-project-path').value.trim();
+  if (!path) return toast('Ingresa una ruta válida');
+  state.projectPath = path;
+  document.getElementById('cfg-project-path').value = path;
+  updateProjectDisplay();
+  saveConfig();
+  closeProjectModal();
+}
+
+function updateProjectDisplay() {
+  const hasProject = !!state.projectPath;
+  const parts = state.projectPath ? state.projectPath.split(/[/\\]/) : [];
+  const name = parts.filter(Boolean).pop() || 'Sin proyecto';
+  document.getElementById('project-name-display').textContent = name;
+  document.getElementById('project-path-display').textContent = state.projectPath || '—';
+  document.getElementById('project-dot').style.background = hasProject ? 'var(--brand)' : 'var(--text3)';
+}
+
+// ── Escanear proyecto ──────────────────────────────────────────
+async function runScan() {
+  if (!state.projectPath) { openProjectModal(); return; }
+  setLoading('btn-scan', true, 'Escaneando...');
+  try {
+    const result = await api('/api/scan', 'POST', { path: state.projectPath });
+    state.scannedTests = result.test_files || [];
+    state.runResults = [];
+    state.analyses = {};
+    renderTestsList();
+    renderSummaryList();
+    updateStats();
+    document.getElementById('btn-run').disabled = false;
+    document.getElementById('btn-analyze').disabled = false;
+    toast(`✓ ${result.total_tests} pruebas detectadas en ${state.scannedTests.length} archivo(s)`);
+  } catch(e) {
+    toast('Error: ' + (e.message || 'No se pudo escanear'));
+  } finally { setLoading('btn-scan', false, 'Escanear proyecto'); }
+}
+
+// ── Ejecutar pytest ────────────────────────────────────────────
+async function runTests() {
+  if (!state.projectPath) return toast('Selecciona un proyecto primero');
+  setLoading('btn-run', true, 'Ejecutando...');
+  try {
+    const result = await api('/api/run', 'POST', { path: state.projectPath });
+    state.runResults = result.tests || [];
+    updateStats(result.summary);
+    renderSummaryList();
+    renderTestsList();
+    toast(`✓ pytest completado: ${result.summary.passed} passed, ${result.summary.failed} failed`);
+  } catch(e) {
+    toast('Error ejecutando pytest: ' + (e.message || ''));
+  } finally { setLoading('btn-run', false, 'Ejecutar pruebas'); }
+}
+
+// ── Analizar con IA ────────────────────────────────────────────
+async function analyzeAll() {
+  if (!state.scannedTests.length) return toast('Escanea el proyecto primero');
+  setLoading('btn-analyze', true, 'Analizando...');
+
+  const allTests = [];
+  state.scannedTests.forEach(f => {
+    f.tests.forEach(t => {
+      const runResult = getRunResult(f.file, t.name);
+      allTests.push({ file: f.file, test: t, outcome: runResult?.outcome || 'unknown' });
+    });
+  });
+
+  let done = 0;
+  for (const item of allTests) {
+    if (state.analyses[item.test.name]) { done++; continue; }
+    try {
+      const analysis = await api('/api/analyze', 'POST', {
+        project_path: state.projectPath,
+        test_file: item.file,
+        test_name: item.test.name,
+        test_code: item.test.code,
+        test_result: item.outcome,
+        model: state.model,
+      });
+      state.analyses[item.test.name] = analysis;
+      done++;
+      document.getElementById('btn-analyze-label').textContent = `Analizando (${done}/${allTests.length})...`;
+      updateStats();
+    } catch(e) { done++; }
+  }
+
+  renderAnalysisPane(state.selectedTest);
+  renderTestsList();
+  renderSummaryList();
+  setLoading('btn-analyze', false, 'Evaluar con IA');
+  toast(`✓ Análisis completado para ${Object.keys(state.analyses).length} prueba(s)`);
+}
+
+async function analyzeOne(testName, testCode, testFile, outcome) {
+  try {
+    const analysis = await api('/api/analyze', 'POST', {
+      project_path: state.projectPath,
+      test_file: testFile,
+      test_name: testName,
+      test_code: testCode,
+      test_result: outcome,
+      model: state.model,
+    });
+    state.analyses[testName] = analysis;
+    renderAnalysisPane(testName);
+    renderTestsList();
+    updateStats();
+    toast('✓ Análisis completado');
+  } catch(e) { toast('Error en análisis: ' + e.message); }
+}
+
+// ── Render: lista de pruebas ───────────────────────────────────
+function renderTestsList() {
+  const container = document.getElementById('tests-list');
+  const allTests = [];
+  state.scannedTests.forEach(f => {
+    f.tests.forEach(t => {
+      const run = getRunResult(f.file, t.name);
+      allTests.push({ file: f.file, test: t, outcome: run?.outcome || 'pending' });
+    });
+  });
+
+  document.getElementById('tests-count-label').textContent =
+    allTests.length ? `${allTests.length} prueba(s)` : '—';
+
+  if (!allTests.length) {
+    container.innerHTML = '<div class="empty"><h3>Sin pruebas</h3><p>Escanea el proyecto para ver las pruebas.</p></div>';
+    return;
+  }
+
+  container.innerHTML = allTests.map(item => `
+    <div class="test-row ${state.selectedTest === item.test.name ? 'selected' : ''}"
+         onclick="selectTest('${escHtml(item.test.name)}', '${escHtml(item.file)}')">
+      ${badgeHtml(item.outcome)}
+      <span class="test-fn">${escHtml(item.test.name)}</span>
+      <span class="test-file-tag">${escHtml(item.file)}</span>
+      ${state.analyses[item.test.name] ? '<span class="ai-tag">Analizado</span>' : ''}
+    </div>
+  `).join('');
+}
+
+function renderSummaryList() {
+  const container = document.getElementById('summary-test-list');
+  const allTests = [];
+  state.scannedTests.forEach(f => {
+    f.tests.forEach(t => {
+      const run = getRunResult(f.file, t.name);
+      allTests.push({ file: f.file, test: t, outcome: run?.outcome || 'pending' });
+    });
+  });
+
+  const files = [...new Set(allTests.map(i => i.file))];
+  document.getElementById('summary-files-label').textContent = files.length ? files.join(' · ') : '—';
+
+  if (!allTests.length) {
+    container.innerHTML = '<div class="empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><h3>Sin datos aún</h3><p>Selecciona un proyecto y escanéalo para comenzar.</p></div>';
+    return;
+  }
+
+  container.innerHTML = allTests.slice(0, 10).map(item => `
+    <div class="test-row ${state.selectedTest === item.test.name ? 'selected' : ''}"
+         onclick="selectTest('${escHtml(item.test.name)}', '${escHtml(item.file)}')">
+      ${badgeHtml(item.outcome)}
+      <span class="test-fn">${escHtml(item.test.name)}</span>
+      <span class="test-file-tag">${escHtml(item.file)}</span>
+      ${state.analyses[item.test.name] ? '<span class="ai-tag">Analizado</span>' : ''}
+    </div>
+  `).join('');
+}
+
+// ── Render: análisis IA ────────────────────────────────────────
+function selectTest(testName, testFile) {
+  state.selectedTest = testName;
+  renderTestsList();
+  renderSummaryList();
+  showPage('analysis');
+
+  if (state.analyses[testName]) {
+    renderAnalysisPane(testName);
+  } else {
+    // Buscar el código de la prueba
+    let code = '', outcome = 'unknown';
+    state.scannedTests.forEach(f => {
+      f.tests.forEach(t => {
+        if (t.name === testName) { code = t.code; }
+      });
+    });
+    const run = getRunResult(testFile, testName);
+    outcome = run?.outcome || 'unknown';
+
+    document.getElementById('analysis-content').innerHTML = `
+      <div class="empty" style="padding:60px 24px">
+        <h3>Prueba seleccionada: ${escHtml(testName)}</h3>
+        <p>Esta prueba no ha sido analizada todavía.</p>
+        <button class="btn btn-primary" style="margin-top:12px"
+          onclick="analyzeOne('${escHtml(testName)}', ${JSON.stringify(code)}, '${escHtml(testFile)}', '${outcome}')">
+          Analizar con IA
+        </button>
+      </div>
+    `;
+  }
+}
+
+function renderAnalysisPane(testName) {
+  if (!testName) return;
+  const analysis = state.analyses[testName];
+  if (!analysis) return;
+
+  // Buscar código
+  let code = '';
+  state.scannedTests.forEach(f => f.tests.forEach(t => { if(t.name===testName) code=t.code; }));
+
+  const qualityColor = {alta:'green', media:'amber', baja:'red'}[analysis.quality] || 'text3';
+  const scoreBar = Math.round((analysis.quality_score || 0) * 10);
+
+  document.getElementById('analysis-content').innerHTML = `
+    <div class="analysis-grid">
+      <div class="ai-card">
+        <div class="ai-head">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--brand)"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4h1.5v4.5h-1.5zm0 5.5h1.5V12h-1.5z"/></svg>
+          Análisis — ${escHtml(testName)}
+        </div>
+        <div class="ai-body">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:12px;color:var(--text2)">Calidad:</span>
+            <strong style="color:var(--${qualityColor})">${(analysis.quality || '—').toUpperCase()}</strong>
+            <span style="font-size:11px;color:var(--text3)">${analysis.quality_score || '—'}/10</span>
+            <div style="flex:1;height:4px;background:var(--border);border-radius:2px">
+              <div style="width:${scoreBar}%;height:100%;background:var(--${qualityColor});border-radius:2px;transition:width 0.4s"></div>
+            </div>
+          </div>
+          <p style="margin-bottom:8px">${escHtml(analysis.summary || '')}</p>
+          ${renderList('Problemas encontrados', analysis.issues, 'danger')}
+          ${renderList('Sugerencias', analysis.suggestions, 'warn')}
+          ${renderList('Casos no cubiertos', analysis.missing_cases, '')}
+          ${renderList('Buenas prácticas', analysis.good_practices, 'good')}
+        </div>
+      </div>
+
+      <div class="ai-card">
+        <div class="ai-head">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--text2)"><path d="M2 2h12v12H2V2zm1 2v8h10V4H3zm1 1h2v1H4zm0 3h8v1H4zm0 2h5v1H4z"/></svg>
+          Código fuente
+        </div>
+        <div class="ai-body" style="padding:0">
+          <div class="code-block">${escHtml(code)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderList(title, items, style) {
+  if (!items || !items.length) return '';
+  const cls = style ? `suggestion ${style}` : 'suggestion';
+  return `<div style="margin-top:10px;font-size:11px;font-weight:500;color:var(--text3);margin-bottom:4px">${title}</div>` +
+    items.map(i => `<div class="${cls}">${escHtml(i)}</div>`).join('');
+}
+
+// ── Estadísticas ───────────────────────────────────────────────
+function updateStats(summary) {
+  const totalTests = state.scannedTests.reduce((a, f) => a + f.tests.length, 0);
+  const passedCount = summary?.passed ?? state.runResults.filter(r => r.outcome === 'passed').length;
+  const failedCount = summary?.failed ?? state.runResults.filter(r => r.outcome === 'failed').length;
+  const analyzedCount = Object.keys(state.analyses).length;
+
+  document.getElementById('stat-total').textContent = totalTests || '—';
+  document.getElementById('stat-passed').textContent = state.runResults.length ? passedCount : '—';
+  document.getElementById('stat-failed').textContent = state.runResults.length ? failedCount : '—';
+  document.getElementById('stat-analyzed').textContent = analyzedCount;
+  document.getElementById('stat-analyzed-total').textContent = totalTests;
+
+  if (state.runResults.length && totalTests) {
+    const pct = Math.round((passedCount / totalTests) * 100);
+    document.getElementById('stat-passed-pct').textContent = pct + '%';
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function getRunResult(file, fnName) {
+  return state.runResults.find(r => r.function === fnName || r.name.endsWith('::' + fnName));
+}
+
+function badgeHtml(outcome) {
+  const map = {passed:'badge-pass', failed:'badge-fail', error:'badge-err', skipped:'badge-skip', pending:'badge-pending', unknown:'badge-pending'};
+  const cls = map[outcome] || 'badge-pending';
+  const label = {passed:'PASS', failed:'FAIL', error:'ERR', skipped:'SKIP', pending:'—', unknown:'—'}[outcome] || outcome.toUpperCase();
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function setLoading(btnId, loading, label) {
+  const btn = document.getElementById(btnId);
+  const lbl = document.getElementById(btnId + '-label');
+  btn.disabled = loading;
+  if (loading) {
+    lbl.innerHTML = `<span class="spinner"></span> ${label}`;
+  } else {
+    lbl.textContent = label;
+  }
+}
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: {'Content-Type': 'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+  return data;
+}
+
+// ── Init ───────────────────────────────────────────────────────
+loadConfig();
+</script>
+</body>
+</html>
