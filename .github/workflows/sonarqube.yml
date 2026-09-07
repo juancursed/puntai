@@ -45,4 +45,4 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=juancursed_puntai
+            -Dsonar.projectKey=juancursed
