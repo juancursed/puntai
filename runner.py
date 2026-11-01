@@ -62,8 +62,6 @@ def run_tests(project_path: str) -> dict:
         return {"error": "pytest tardó más de 120 segundos. Verifica que las pruebas no cuelguen."}
     except FileNotFoundError:
         return {"error": "No se encontró 'python' o 'pytest'. Asegúrate de tener el entorno activado."}
-    finally:
-        pass
 
     # Leer reporte JSON
     try:
@@ -71,17 +69,17 @@ def run_tests(project_path: str) -> dict:
             report = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         # Fallback: parsear salida de texto si no hay reporte JSON
-        return _parse_text_output(result.stdout, result.stderr)
+        return _parse_text_output(result.stdout)
     finally:
         try:
             os.unlink(report_path)
         except OSError:
             pass
 
-    return _parse_json_report(report, root)
+    return _parse_json_report(report)
 
 
-def _parse_json_report(report: dict, root: Path) -> dict:
+def _parse_json_report(report: dict) -> dict:
     """Convierte el reporte JSON de pytest-json-report a nuestro formato."""
     summary_raw = report.get("summary", {})
 
@@ -127,7 +125,7 @@ def _parse_json_report(report: dict, root: Path) -> dict:
     }
 
 
-def _parse_text_output(stdout: str, stderr: str) -> dict:
+def _parse_text_output(stdout: str) -> dict:
     """
     Fallback: parsea la salida de texto de pytest cuando no hay reporte JSON.
     Útil si pytest-json-report no está instalado.

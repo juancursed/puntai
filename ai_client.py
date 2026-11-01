@@ -4,6 +4,7 @@ ai_client.py — Envía pruebas unitarias a la IA y devuelve análisis estructur
 Soporta:
   - Claude (Anthropic) via API directa
   - OpenAI (GPT-4o)
+  - Laguna (Poolside via OpenRouter)
 """
 
 import httpx
@@ -65,6 +66,8 @@ async def analyze_test(
         return await _call_claude(test_name, test_code, test_result, api_key)
     elif model == "openai":
         return await _call_openai(test_name, test_code, test_result, api_key)
+    elif model == "laguna":
+        return await _call_openrouter(test_name, test_code, test_result, api_key)
     else:
         return {"error": f"Modelo '{model}' no soportado."}
 
@@ -104,13 +107,46 @@ async def _call_claude(test_name: str, test_code: str, test_result: str, api_key
 
 async def _call_openai(test_name: str, test_code: str, test_result: str, api_key: str) -> dict:
     """Llama a la API de OpenAI."""
-    url = "https://api.openai.com/v1/chat/completions"
+    return await _call_openai_compatible(
+        url="https://api.openai.com/v1/chat/completions",
+        model_id="gpt-4o",
+        provider_name="OpenAI",
+        test_name=test_name,
+        test_code=test_code,
+        test_result=test_result,
+        api_key=api_key,
+    )
+
+
+async def _call_openrouter(test_name: str, test_code: str, test_result: str, api_key: str) -> dict:
+    """Llama a la API de OpenRouter con el modelo Laguna de Poolside."""
+    return await _call_openai_compatible(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        model_id="poolside/laguna-s-2.1",
+        provider_name="OpenRouter",
+        test_name=test_name,
+        test_code=test_code,
+        test_result=test_result,
+        api_key=api_key,
+    )
+
+
+async def _call_openai_compatible(
+    url: str,
+    model_id: str,
+    provider_name: str,
+    test_name: str,
+    test_code: str,
+    test_result: str,
+    api_key: str,
+) -> dict:
+    """Llama a un endpoint compatible con OpenAI Chat Completions."""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {
-        "model": "gpt-4o",
+        "model": model_id,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": _build_user_message(test_name, test_code, test_result)},
@@ -127,9 +163,9 @@ async def _call_openai(test_name: str, test_code: str, test_result: str, api_key
             raw_text = data["choices"][0]["message"]["content"]
             return _parse_ai_response(raw_text)
         except httpx.HTTPStatusError as e:
-            return {"error": f"Error HTTP de OpenAI: {e.response.status_code} - {e.response.text}"}
+            return {"error": f"Error HTTP de {provider_name}: {e.response.status_code} - {e.response.text}"}
         except Exception as e:
-            return {"error": f"Error al llamar a OpenAI: {str(e)}"}
+            return {"error": f"Error al llamar a {provider_name}: {str(e)}"}
 
 
 def _parse_ai_response(raw: str) -> dict:

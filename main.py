@@ -38,13 +38,14 @@ class AnalyzeRequest(BaseModel):
     test_name: str
     test_code: str
     test_result: str  # PASS | FAIL | ERROR | SKIP
-    model: str = "claude"  # claude | openai
+    model: str = "claude"  # claude | openai | laguna
 
 class ConfigUpdate(BaseModel):
     project_path: str = ""
     model: str = "claude"
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    openrouter_api_key: str = ""
 
 # ---------- Config en disco ----------
 
@@ -59,6 +60,7 @@ def load_config() -> dict:
         "model": "claude",
         "anthropic_api_key": "",
         "openai_api_key": "",
+        "openrouter_api_key": "",
     }
 
 def save_config(data: dict):
@@ -82,7 +84,7 @@ async def update_config(body: ConfigUpdate):
     save_config(cfg)
     return {"ok": True}
 
-@app.post("/api/scan")
+@app.post("/api/scan", responses={400: {"description": "Ruta del proyecto inválida"}})
 async def scan(body: ProjectRequest):
     """Escanea el proyecto y devuelve todos los archivos y funciones de prueba."""
     result = scan_project(body.path)
@@ -90,7 +92,7 @@ async def scan(body: ProjectRequest):
         raise HTTPException(status_code=400, detail=result["error"])
     return result
 
-@app.post("/api/run")
+@app.post("/api/run", responses={400: {"description": "Error al ejecutar pruebas en la ruta indicada"}})
 async def run(body: ProjectRequest):
     """Ejecuta pytest en el proyecto y devuelve resultados."""
     result = run_tests(body.path)
@@ -98,11 +100,16 @@ async def run(body: ProjectRequest):
         raise HTTPException(status_code=400, detail=result["error"])
     return result
 
-@app.post("/api/analyze")
+@app.post("/api/analyze", responses={400: {"description": "API key no configurada"}})
 async def analyze(body: AnalyzeRequest):
     """Envía una prueba a la IA y devuelve el análisis."""
     cfg = load_config()
-    api_key = cfg.get("anthropic_api_key") if body.model == "claude" else cfg.get("openai_api_key")
+    api_keys = {
+        "claude": cfg.get("anthropic_api_key"),
+        "openai": cfg.get("openai_api_key"),
+        "laguna": cfg.get("openrouter_api_key"),
+    }
+    api_key = api_keys.get(body.model)
 
     if not api_key:
         raise HTTPException(status_code=400, detail=f"API key para '{body.model}' no configurada.")

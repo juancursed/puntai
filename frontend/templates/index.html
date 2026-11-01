@@ -38,7 +38,7 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);height
 .sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 .sidebar-block{padding:12px 10px 6px}
 .sidebar-label{font-size:10px;font-weight:500;color:var(--text3);letter-spacing:0.5px;text-transform:uppercase;padding:0 6px;margin-bottom:4px}
-.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);transition:background 0.12s;user-select:none}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);transition:background 0.12s;user-select:none;width:100%;border:none;background:none;font-family:inherit;text-align:left}
 .nav-item:hover{background:var(--surface2);color:var(--text)}
 .nav-item.active{background:var(--brand-soft);color:var(--brand-dim);font-weight:500}
 .nav-item svg{width:14px;height:14px;flex-shrink:0}
@@ -52,7 +52,7 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);height
 .link-btn{background:none;border:none;cursor:pointer;font-size:11px;color:var(--brand);font-family:'Sora',sans-serif;padding:0;margin-top:5px;text-decoration:underline;text-underline-offset:2px}
 
 .model-card{margin:0 10px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
-.model-label{font-size:10px;color:var(--text3);margin-bottom:4px}
+.model-label{display:block;font-size:10px;color:var(--text3);margin-bottom:4px}
 select{width:100%;font-size:12px;font-family:'Sora',sans-serif;color:var(--text);background:transparent;border:none;outline:none;cursor:pointer}
 
 .sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px}
@@ -183,31 +183,32 @@ select{width:100%;font-size:12px;font-family:'Sora',sans-serif;color:var(--text)
     </div>
 
     <div class="model-card">
-      <div class="model-label">Modelo de IA</div>
+      <label class="model-label" for="model-select">Modelo de IA</label>
       <select id="model-select" onchange="saveConfig()">
         <option value="claude">Claude Sonnet 4</option>
         <option value="openai">GPT-4o (OpenAI)</option>
+        <option value="laguna">Laguna S 2.1 (OpenRouter)</option>
       </select>
     </div>
 
     <div class="sidebar-block">
       <div class="sidebar-label">Navegación</div>
-      <div class="nav-item active" onclick="showPage('summary')" id="nav-summary">
+      <button type="button" class="nav-item active" onclick="showPage('summary')" id="nav-summary">
         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zM2 7h8v2H2zM2 11h10v2H2z"/></svg>
         Resumen
-      </div>
-      <div class="nav-item" onclick="showPage('tests')" id="nav-tests">
+      </button>
+      <button type="button" class="nav-item" onclick="showPage('tests')" id="nav-tests">
         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2h14v1.5l-5 4.5v6l-4-2V8L1 3.5V2z"/></svg>
         Pruebas
-      </div>
-      <div class="nav-item" onclick="showPage('analysis')" id="nav-analysis">
+      </button>
+      <button type="button" class="nav-item" onclick="showPage('analysis')" id="nav-analysis">
         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4h1.5v4.5h-1.5zm0 5.5h1.5V12h-1.5z"/></svg>
         Análisis IA
-      </div>
-      <div class="nav-item" onclick="showPage('config')" id="nav-config">
+      </button>
+      <button type="button" class="nav-item" onclick="showPage('config')" id="nav-config">
         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a3 3 0 100 6A3 3 0 008 5zM1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z"/></svg>
         Configuración
-      </div>
+      </button>
     </div>
 
     <div class="sidebar-footer">
@@ -287,7 +288,7 @@ select{width:100%;font-size:12px;font-family:'Sora',sans-serif;color:var(--text)
       <div class="config-section">
         <h3>Proyecto</h3>
         <div class="field">
-          <label>Ruta del proyecto</label>
+          <label for="cfg-project-path">Ruta del proyecto</label>
           <input type="text" id="cfg-project-path" placeholder="/home/usuario/mi_proyecto">
         </div>
         <button class="btn btn-primary" onclick="applyProjectPath()">Aplicar ruta</button>
@@ -296,12 +297,16 @@ select{width:100%;font-size:12px;font-family:'Sora',sans-serif;color:var(--text)
       <div class="config-section">
         <h3>Claves de API</h3>
         <div class="field">
-          <label>Anthropic API Key (Claude)</label>
+          <label for="cfg-anthropic-key">Anthropic API Key (Claude)</label>
           <input type="password" id="cfg-anthropic-key" placeholder="sk-ant-...">
         </div>
         <div class="field">
-          <label>OpenAI API Key (GPT-4o)</label>
+          <label for="cfg-openai-key">OpenAI API Key (GPT-4o)</label>
           <input type="password" id="cfg-openai-key" placeholder="sk-...">
+        </div>
+        <div class="field">
+          <label for="cfg-openrouter-key">OpenRouter API Key (Laguna)</label>
+          <input type="password" id="cfg-openrouter-key" placeholder="sk-or-...">
         </div>
         <button class="btn btn-primary" onclick="saveConfig()">Guardar configuración</button>
       </div>
@@ -322,7 +327,7 @@ select{width:100%;font-size:12px;font-family:'Sora',sans-serif;color:var(--text)
   <div class="modal">
     <h3>Seleccionar proyecto</h3>
     <div class="field">
-      <label>Ruta absoluta al directorio del proyecto</label>
+      <label for="modal-project-path">Ruta absoluta al directorio del proyecto</label>
       <input type="text" id="modal-project-path" placeholder="/home/usuario/mi_proyecto">
     </div>
     <div class="modal-actions">
@@ -374,6 +379,7 @@ async function loadConfig() {
     document.getElementById('cfg-project-path').value = state.projectPath;
     document.getElementById('cfg-anthropic-key').value = cfg.anthropic_api_key || '';
     document.getElementById('cfg-openai-key').value = cfg.openai_api_key || '';
+    document.getElementById('cfg-openrouter-key').value = cfg.openrouter_api_key || '';
     updateProjectDisplay();
   } catch(e) { console.error('Error cargando config:', e); }
 }
@@ -383,6 +389,7 @@ async function saveConfig() {
   const projectPath = document.getElementById('cfg-project-path').value || state.projectPath;
   const anthropicKey = document.getElementById('cfg-anthropic-key').value;
   const openaiKey = document.getElementById('cfg-openai-key').value;
+  const openrouterKey = document.getElementById('cfg-openrouter-key').value;
   state.model = model;
   try {
     await api('/api/config', 'POST', {
@@ -390,9 +397,13 @@ async function saveConfig() {
       model,
       anthropic_api_key: anthropicKey,
       openai_api_key: openaiKey,
+      openrouter_api_key: openrouterKey,
     });
     toast('Configuración guardada');
-  } catch(e) { toast('Error guardando config'); }
+  } catch(e) {
+    console.error('Error guardando config:', e);
+    toast('Error guardando config');
+  }
 }
 
 function applyProjectPath() {
@@ -425,7 +436,7 @@ function applyProjectModal() {
 function updateProjectDisplay() {
   const hasProject = !!state.projectPath;
   const parts = state.projectPath ? state.projectPath.split(/[/\\]/) : [];
-  const name = parts.filter(Boolean).pop() || 'Sin proyecto';
+  const name = parts.findLast(Boolean) || 'Sin proyecto';
   document.getElementById('project-name-display').textContent = name;
   document.getElementById('project-path-display').textContent = state.projectPath || '—';
   document.getElementById('project-dot').style.background = hasProject ? 'var(--brand)' : 'var(--text3)';
@@ -481,8 +492,8 @@ async function analyzeAll() {
   });
 
   let done = 0;
-  for (const item of allTests) {
-    if (state.analyses[item.test.name]) { done++; continue; }
+  await Promise.all(allTests.map(async (item) => {
+    if (state.analyses[item.test.name]) { done++; return; }
     try {
       const analysis = await api('/api/analyze', 'POST', {
         project_path: state.projectPath,
@@ -496,8 +507,11 @@ async function analyzeAll() {
       done++;
       document.getElementById('btn-analyze-label').textContent = `Analizando (${done}/${allTests.length})...`;
       updateStats();
-    } catch(e) { done++; }
-  }
+    } catch(e) {
+      console.error('Error analizando prueba:', e);
+      done++;
+    }
+  }));
 
   renderAnalysisPane(state.selectedTest);
   renderTestsList();
@@ -704,7 +718,7 @@ function badgeHtml(outcome) {
 }
 
 function escHtml(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return String(str || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 }
 
 function setLoading(btnId, loading, label) {
@@ -728,7 +742,7 @@ async function api(path, method='GET', body=null) {
 }
 
 // ── Init ───────────────────────────────────────────────────────
-loadConfig();
+document.addEventListener('DOMContentLoaded', loadConfig);
 </script>
 </body>
 </html>
