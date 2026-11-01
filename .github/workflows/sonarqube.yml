@@ -23,12 +23,29 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=main --cov=scanner --cov=runner --cov=ai_client --cov-report=xml:coverage.xml
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          args:
+          args: >
             -Dsonar.projectKey=juancursed_puntai
             -Dsonar.organization=juancursed
+            -Dsonar.sources=main.py,scanner.py,runner.py,ai_client.py,frontend,config.json
+            -Dsonar.tests=tests
+            -Dsonar.exclusions=.github/**,tests/**
+            -Dsonar.python.coverage.reportPaths=coverage.xml
