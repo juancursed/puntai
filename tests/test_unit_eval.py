@@ -5,8 +5,11 @@ Pruebas unitarias para UnitEval (scanner, runner, ai_client y main).
 import asyncio
 import json
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import httpx
 from fastapi.testclient import TestClient
