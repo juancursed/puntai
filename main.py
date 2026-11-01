@@ -6,7 +6,7 @@ Ejecutar con: python main.py
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
@@ -52,7 +52,8 @@ CONFIG_FILE = Path("config.json")
 
 def load_config() -> dict:
     if CONFIG_FILE.exists():
-        return json.loads(CONFIG_FILE.read_text())
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
     return {
         "project_path": "",
         "model": "claude",
@@ -61,14 +62,14 @@ def load_config() -> dict:
     }
 
 def save_config(data: dict):
-    CONFIG_FILE.write_text(json.dumps(data, indent=2))
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
 # ---------- Rutas ----------
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
 async def index():
-    html_path = Path("frontend/templates/index.html")
-    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
+    return FileResponse("frontend/templates/index.html")
 
 @app.get("/api/config")
 async def get_config():
@@ -117,4 +118,4 @@ async def analyze(body: AnalyzeRequest):
 
 if __name__ == "__main__":
     print("\n🔬 UnitEval arrancando en http://localhost:6060\n")
-    uvicorn.run("main:app", host="0.0.0.0", port=6060, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=6060, reload=True)
