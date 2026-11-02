@@ -9,6 +9,9 @@ import ast
 import os
 from pathlib import Path
 
+# Directorios a ignorar
+IGNORE_DIRS = {".git", "__pycache__", ".venv", "venv", "env", "node_modules", ".tox", "dist", "build"}
+
 
 def scan_project(project_path: str) -> dict:
     """
@@ -48,9 +51,6 @@ def scan_project(project_path: str) -> dict:
 
     test_files = []
     total_tests = 0
-
-    # Directorios a ignorar
-    IGNORE_DIRS = {".git", "__pycache__", ".venv", "venv", "env", "node_modules", ".tox", "dist", "build"}
 
     for dirpath, dirnames, filenames in os.walk(root):
         # Filtrar directorios ignorados

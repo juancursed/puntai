@@ -43,7 +43,7 @@ Abre el navegador en: **http://localhost:8080**
 
 1. Ve a la pestaña **Configuración** en la interfaz
 2. Ingresa la ruta a tu proyecto Python
-3. Agrega tu API Key de Claude (Anthropic) o GPT-4o (OpenAI)
+3. Agrega tu API Key desde Configuración, o defínela en `.env` (ver `.env.example`)
 4. Guarda la configuración
 
 ---

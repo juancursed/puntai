@@ -14,26 +14,7 @@ from pathlib import Path
 
 def run_tests(project_path: str) -> dict:
     """
-    Ejecuta pytest en el proyecto y devuelve resultados estructurados.
-
-    Args:
-        project_path: Ruta al directorio del proyecto.
-
-    Returns:
-        {
-            "summary": {"total": int, "passed": int, "failed": int, "error": int, "skipped": int},
-            "tests": [
-                {
-                    "name": str,       # nombre completo: archivo::función
-                    "file": str,       # archivo relativo
-                    "function": str,   # nombre de la función
-                    "outcome": str,    # passed | failed | error | skipped
-                    "duration": float, # segundos
-                    "message": str,    # mensaje de error si falla
-                }
-            ],
-            "duration": float,
-        }
+    Ejecuta pytest en el proyecto y devuelve el resumen y el resultado de cada prueba.
     """
     root = Path(project_path).expanduser().resolve()
 

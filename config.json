@@ -1,7 +1,5 @@
 {
-  "project_path": "",
+  "project_path": "G:\\Juan\\TG_objetos\\proyecto_test_tg",
   "model": "laguna",
-  "anthropic_api_key": "",
-  "openai_api_key": "",
-  "openrouter_api_key": ""
+  "openrouter_model": "poolside/laguna-xs-2.1"
 }
