@@ -166,7 +166,15 @@ async function runTests() {
     const result = await api('/api/run', 'POST', { path: state.projectPath });
     state.runResults = result.tests || [];
     refreshViews();
-    toast(`✓ pytest completado: ${result.summary.passed} passed, ${result.summary.failed} failed`);
+    const sum = result.summary || {};
+    const firstProblem = state.runResults.find(t => t.outcome === 'error' && t.message);
+    if (sum.error && !sum.passed && !sum.failed && firstProblem) {
+      console.error('pytest:', firstProblem.name, firstProblem.message);
+      toast(`pytest: ${sum.error} prueba(s) con error al prepararse. ${firstProblem.message.trim().split(/\r?\n/).pop()}`, 10000);
+    } else {
+      toast(`✓ pytest completado: ${sum.passed || 0} passed, ${sum.failed || 0} failed, `
+        + `${sum.error || 0} error, ${sum.skipped || 0} skipped (de ${sum.total || 0})`);
+    }
   } catch(e) {
     console.error('Error ejecutando pytest:', e);
     toast('Error ejecutando pytest: ' + (e.message || ''), 10000);

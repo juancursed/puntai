@@ -123,3 +123,16 @@ def test_run_tests_explains_collection_errors_when_no_tests_run(tmp_path: Path):
     in_process.assert_called_once()
     assert "código de salida 2" in result["error"]
     assert "No module named 'carrito'" in result["error"]
+
+
+def test_parse_json_report_reads_setup_errors():
+    report = {
+        "summary": {"total": 1, "error": 1},
+        "tests": [{
+            "nodeid": "tests/test_a.py::test_x", "outcome": "error",
+            "setup": {"longrepr": "fixture 'db' not found"}, "call": {},
+        }],
+    }
+    parsed = runner._parse_json_report(report)
+    assert parsed["summary"]["error"] == 1
+    assert parsed["tests"][0]["message"] == "fixture 'db' not found"

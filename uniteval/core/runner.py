@@ -184,8 +184,12 @@ def _parse_json_report(report: dict) -> dict:
         # Mensaje de error
         message = ""
         if t.get("outcome") in ("failed", "error"):
-            call = t.get("call", {})
-            longrepr = call.get("longrepr", "")
+            # Un "error" ocurre al preparar la prueba (setup) o al limpiarla (teardown).
+            longrepr = next(
+                (t.get(phase, {}).get("longrepr") for phase in ("call", "setup", "teardown")
+                 if t.get(phase, {}).get("longrepr")),
+                "",
+            )
             # Tomar las últimas líneas relevantes
             if longrepr:
                 lines = longrepr.strip().splitlines()
