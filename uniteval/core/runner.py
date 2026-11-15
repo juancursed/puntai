@@ -308,3 +308,57 @@ def environment_report(project_dir: Path) -> dict:
         "modules": versions,
         "subprocess_probe": probe,
     }
+
+
+def debug_run(root: Path) -> dict:
+    """Detalle de cada forma de ejecutar pytest, para diagnosticar un servidor."""
+    root = root.resolve()
+    attempts = []
+    for explicit_plugin in (False, True):
+        entry = {"modo": "subproceso (plugin explícito)" if explicit_plugin else "subproceso"}
+        try:
+            result, report = _subprocess_attempt(root, explicit_plugin)
+            entry.update({
+                "returncode": result.returncode,
+                "reporte_json": report is not None,
+                "pruebas_en_reporte": len(report.get("tests", [])) if report else None,
+                "resultados": _outcome_counts(report),
+                "stdout": _tail(result.stdout or "", 25),
+                "stderr": _tail(result.stderr or "", 25),
+            })
+        except Exception as e:  # Diagnóstico: se reporta cualquier fallo
+            entry["excepcion"] = repr(e)
+        attempts.append(entry)
+
+    in_process = {"modo": "en proceso"}
+    try:
+        report = _run_in_process(root)
+        in_process.update({
+            "reporte_json": report is not None,
+            "pruebas_en_reporte": len(report.get("tests", [])) if report else None,
+            "resultados": _outcome_counts(report),
+        })
+    except Exception as e:
+        in_process["excepcion"] = repr(e)
+    attempts.append(in_process)
+
+    final = run_tests(str(root))
+    return {
+        "proyecto": str(root),
+        "intentos": attempts,
+        "resultado_final": {
+            "runner": final.get("runner"),
+            "summary": final.get("summary"),
+            "error": final.get("error"),
+            "primeras_pruebas": [
+                {k: t[k] for k in ("name", "outcome", "message")} for t in final.get("tests", [])[:5]
+            ],
+        },
+    }
+
+
+def _outcome_counts(report: dict | None) -> dict:
+    counts: dict[str, int] = {}
+    for test in (report or {}).get("tests", []):
+        counts[test.get("outcome", "?")] = counts.get(test.get("outcome", "?"), 0) + 1
+    return counts

@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from uniteval import config, reports
 from uniteval.ai import analyze_test
-from uniteval.core.runner import environment_report, run_tests
+from uniteval.core.runner import debug_run, environment_report, run_tests
 from uniteval.core.scanner import scan_project
 from uniteval.core.source_resolver import find_source_code
 from uniteval.schemas import AnalyzeRequest, ConfigUpdate, ProjectRequest, ReportPayload
@@ -102,6 +102,12 @@ async def analyze(body: AnalyzeRequest):
 async def diagnostics():
     """Entorno del servidor y archivos del proyecto de ejemplo (sin claves ni variables)."""
     return environment_report(config.DEMO_PROJECT_DIR)
+
+
+@router.get("/diagnostics/run")
+async def diagnostics_run():
+    """Ejecuta las pruebas del proyecto de ejemplo y muestra el detalle de cada intento."""
+    return debug_run(config.DEMO_PROJECT_DIR)
 
 
 # ── Reportes ────────────────────────────────────────────────────────────────
