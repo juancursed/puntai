@@ -5,11 +5,14 @@ Usa pytest con salida JSON para obtener resultados estructurados.
 Requiere: pip install pytest pytest-json-report
 """
 
-import subprocess
 import json
-import tempfile
 import os
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
+
+PYTEST_TIMEOUT_SECONDS = 120
 
 
 def run_tests(project_path: str) -> dict:
@@ -27,7 +30,7 @@ def run_tests(project_path: str) -> dict:
     try:
         result = subprocess.run(
             [
-                "python", "-m", "pytest",
+                sys.executable, "-m", "pytest",
                 "--json-report",
                 f"--json-report-file={report_path}",
                 "--tb=short",
@@ -37,10 +40,10 @@ def run_tests(project_path: str) -> dict:
             capture_output=True,
             text=True,
             cwd=str(root),
-            timeout=120,
+            timeout=PYTEST_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
-        return {"error": "pytest tardó más de 120 segundos. Verifica que las pruebas no cuelguen."}
+        return {"error": f"pytest tardó más de {PYTEST_TIMEOUT_SECONDS} segundos. Verifica que las pruebas no cuelguen."}
     except FileNotFoundError:
         return {"error": "No se encontró 'python' o 'pytest'. Asegúrate de tener el entorno activado."}
 
@@ -111,36 +114,31 @@ def _parse_text_output(stdout: str) -> dict:
     Fallback: parsea la salida de texto de pytest cuando no hay reporte JSON.
     Útil si pytest-json-report no está instalado.
     """
+    outcomes = {
+        " PASSED": ("passed", ""),
+        " FAILED": ("failed", "Ver logs de pytest para detalles."),
+    }
     tests = []
     summary = {"total": 0, "passed": 0, "failed": 0, "error": 0, "skipped": 0}
 
     for line in stdout.splitlines():
         line = line.strip()
-        if "::" in line:
-            if " PASSED" in line:
+        if "::" not in line:
+            continue
+        for marker, (outcome, message) in outcomes.items():
+            if marker in line:
                 name = line.split(" ")[0]
                 parts = name.split("::")
                 tests.append({
                     "name": name,
                     "file": parts[0],
                     "function": parts[-1],
-                    "outcome": "passed",
+                    "outcome": outcome,
                     "duration": 0,
-                    "message": "",
+                    "message": message,
                 })
-                summary["passed"] += 1
-            elif " FAILED" in line:
-                name = line.split(" ")[0]
-                parts = name.split("::")
-                tests.append({
-                    "name": name,
-                    "file": parts[0],
-                    "function": parts[-1],
-                    "outcome": "failed",
-                    "duration": 0,
-                    "message": "Ver logs de pytest para detalles.",
-                })
-                summary["failed"] += 1
+                summary[outcome] += 1
+                break
 
     summary["total"] = len(tests)
 

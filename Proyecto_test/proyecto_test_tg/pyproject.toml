@@ -1,0 +1,10 @@
+[project]
+name = "carrito-demo"
+version = "0.1.0"
+description = "Proyecto de ejemplo con pruebas unitarias usando pytest"
+requires-python = ">=3.9"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-v"

@@ -32,10 +32,16 @@ pip install -r requirements.txt
 ## Uso
 
 ```bash
-python main.py
+python main.py          # o bien: python -m uniteval
 ```
 
-Abre el navegador en: **http://localhost:8080**
+Abre el navegador en: **http://localhost:6060** (puedes cambiar el puerto con la variable `UNITEVAL_PORT`).
+
+Para correr las pruebas de UnitEval:
+
+```bash
+python -m pytest
+```
 
 ---
 
@@ -62,16 +68,37 @@ Abre el navegador en: **http://localhost:8080**
 ## Estructura del proyecto
 
 ```
-uniteval/
-├── main.py              # Servidor FastAPI (punto de entrada)
-├── scanner.py           # Detecta pruebas con AST (sin ejecutar código)
-├── runner.py            # Ejecuta pytest y parsea resultados
-├── ai_client.py         # Cliente para Claude y OpenAI
+tg/
+├── main.py                    # Punto de entrada (python main.py)
+├── pyproject.toml             # Metadatos y configuración de pytest
 ├── requirements.txt
-├── config.json          # Generado automáticamente al guardar config
-└── frontend/
-    └── templates/
-        └── index.html   # Interfaz web completa
+├── config.json                # Generado al guardar la configuración
+├── uniteval/                  # Paquete de la aplicación
+│   ├── __main__.py            # Arranque del servidor (python -m uniteval)
+│   ├── app.py                 # Construye la app FastAPI
+│   ├── routes.py              # Endpoints /api/...
+│   ├── schemas.py             # Modelos de entrada (Pydantic)
+│   ├── config.py              # Rutas, config.json y API keys (.env)
+│   ├── reports.py             # Guarda y lee reportes en reports/
+│   ├── core/
+│   │   ├── scanner.py         # Detecta pruebas con AST (sin ejecutar código)
+│   │   ├── runner.py          # Ejecuta pytest y parsea resultados
+│   │   └── source_resolver.py # Localiza el código que ejercita cada prueba
+│   └── ai/
+│       ├── client.py          # analyze_test: elige el proveedor
+│       ├── providers.py       # Llamadas HTTP a Claude, OpenAI y Laguna
+│       ├── parser.py          # Convierte la respuesta en análisis estructurado
+│       ├── prompts.py         # Carga y rellena los prompts
+│       └── prompts/
+│           ├── system.md      # Prompt de sistema (rol, 4 pasos, few-shot)
+│           └── user.md        # Plantilla con el código fuente y la prueba
+├── frontend/
+│   ├── templates/index.html   # Estructura de la interfaz
+│   └── static/
+│       ├── css/styles.css     # Estilos (tema claro y oscuro)
+│       └── js/app.js          # Lógica de la interfaz
+├── tests/                     # Pruebas de UnitEval, una por módulo
+└── Proyecto_test/             # Proyecto de ejemplo a evaluar
 ```
 
 ---

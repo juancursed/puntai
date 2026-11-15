@@ -1,0 +1,2 @@
+# Los prompts se envían tal cual a la IA: mismo contenido en cualquier sistema operativo.
+uniteval/ai/prompts/*.md text eol=lf

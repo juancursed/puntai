@@ -57,7 +57,7 @@ def scan_project(project_path: str) -> dict:
         dirnames[:] = [d for d in dirnames if d not in IGNORE_DIRS]
 
         for filename in filenames:
-            if _is_test_file(filename):
+            if is_test_file(filename):
                 abs_path = Path(dirpath) / filename
                 rel_path = abs_path.relative_to(root)
 
@@ -77,7 +77,7 @@ def scan_project(project_path: str) -> dict:
     }
 
 
-def _is_test_file(filename: str) -> bool:
+def is_test_file(filename: str) -> bool:
     """Verifica si un archivo es un archivo de pruebas de pytest."""
     return filename.endswith(".py") and (
         filename.startswith("test_") or filename.endswith("_test.py")

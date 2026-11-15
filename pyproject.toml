@@ -1,0 +1,9 @@
+[project]
+name = "uniteval"
+version = "0.1.0"
+description = "Evaluador automático de pruebas unitarias Python con IA"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+# Solo las pruebas de UnitEval; Proyecto_test/ es el proyecto que se evalúa.
+testpaths = ["tests"]

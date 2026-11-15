@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-REPORTS_DIR = Path("reports")
+from uniteval.config import REPORTS_DIR
 
 _REPORT_ID_RE = re.compile(r"\d{8}-\d{6}-[0-9a-f]{6}")
 

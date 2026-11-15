@@ -34,7 +34,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          python -m pytest --cov=main --cov=scanner --cov=runner --cov=ai_client --cov-report=xml:coverage.xml
+          python -m pytest --cov=uniteval --cov-report=xml:coverage.xml
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1
@@ -45,7 +45,7 @@ jobs:
           args: >
             -Dsonar.projectKey=juancursed_puntai
             -Dsonar.organization=juancursed
-            -Dsonar.sources=main.py,scanner.py,runner.py,ai_client.py,frontend,config.json
+            -Dsonar.sources=main.py,uniteval,frontend
             -Dsonar.tests=tests
-            -Dsonar.exclusions=.github/**,tests/**
+            -Dsonar.exclusions=.github/**,tests/**,Proyecto_test/**
             -Dsonar.python.coverage.reportPaths=coverage.xml

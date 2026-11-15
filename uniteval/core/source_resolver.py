@@ -13,7 +13,7 @@ import os
 from collections import deque
 from pathlib import Path
 
-from scanner import IGNORE_DIRS, _is_test_file
+from uniteval.core.scanner import IGNORE_DIRS, is_test_file
 
 # Límite para no enviar proyectos enteros a la IA en cada prueba.
 MAX_SOURCE_CHARS = 20000
@@ -142,7 +142,7 @@ def _index_project(root: Path) -> dict:
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in IGNORE_DIRS]
         for filename in filenames:
-            if not filename.endswith(".py") or filename == "conftest.py" or _is_test_file(filename):
+            if not filename.endswith(".py") or filename == "conftest.py" or is_test_file(filename):
                 continue
             path = Path(dirpath) / filename
             _index_module(path, path.relative_to(root).as_posix(), index)
