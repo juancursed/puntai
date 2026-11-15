@@ -173,7 +173,8 @@ async function runTests() {
       toast(`pytest: ${sum.error} prueba(s) con error al prepararse. ${firstProblem.message.trim().split(/\r?\n/).pop()}`, 10000);
     } else {
       toast(`✓ pytest completado: ${sum.passed || 0} passed, ${sum.failed || 0} failed, `
-        + `${sum.error || 0} error, ${sum.skipped || 0} skipped (de ${sum.total || 0})`);
+        + `${sum.error || 0} error, ${sum.skipped || 0} skipped (de ${sum.total || 0})`
+        + (result.runner ? ` · ${result.runner}` : ''));
     }
   } catch(e) {
     console.error('Error ejecutando pytest:', e);

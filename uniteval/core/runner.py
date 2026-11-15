@@ -28,43 +28,56 @@ def run_tests(project_path: str) -> dict:
     if not root.exists():
         return {"error": f"La ruta '{project_path}' no existe."}
 
+    results = []   # Salidas de los subprocesos, para explicar un fallo
+    reports = []   # Reportes JSON obtenidos sin pruebas
+    for explicit_plugin in (False, True):
+        try:
+            result, report = _subprocess_attempt(root, explicit_plugin)
+        except subprocess.TimeoutExpired:
+            return {"error": f"pytest tardó más de {PYTEST_TIMEOUT_SECONDS} segundos. Verifica que las pruebas no cuelguen."}
+        except OSError:  # No se pudo lanzar el intérprete
+            break
+        if _has_tests(report):
+            mode = "subproceso (plugin explícito)" if explicit_plugin else "subproceso"
+            return {**_parse_json_report(report), "runner": mode}
+        results.append(result)
+        if report is not None:
+            reports.append(report)
+
+    for result in results:
+        # pytest corrió pero sin reporte JSON: se intenta leer su salida de texto.
+        parsed = _parse_text_output(result.stdout or "")
+        if parsed["tests"]:
+            return {**parsed, "runner": "salida de texto"}
+
+    # El entorno del subproceso puede ser el problema, así que se reintenta aquí.
+    in_process = _run_in_process(root)
+    if _has_tests(in_process):
+        return {**_parse_json_report(in_process), "runner": "en proceso"}
+
+    report = in_process or (reports[-1] if reports else None)
+    return {"error": _failure_message(root, report, results)}
+
+
+def _subprocess_attempt(root: Path, explicit_plugin: bool) -> tuple:
+    """Ejecuta pytest en un subproceso y devuelve (salida, reporte JSON o None)."""
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         report_path = tmp.name
-
     try:
-        result = _run_subprocess(root, report_path)
-        report = _read_report(report_path)
-    except subprocess.TimeoutExpired:
-        return {"error": f"pytest tardó más de {PYTEST_TIMEOUT_SECONDS} segundos. Verifica que las pruebas no cuelguen."}
-    except OSError:  # No se pudo lanzar el intérprete
-        result, report = None, None
+        result = _run_subprocess(root, report_path, explicit_plugin)
+        return result, _read_report(report_path)
     finally:
         try:
             os.unlink(report_path)
         except OSError:
             pass
 
-    if _has_tests(report):
-        return _parse_json_report(report)
-
-    stdout = result.stdout if result is not None else ""
-    if report is None and "::" in stdout:
-        # pytest corrió pero sin reporte JSON (pytest-json-report no instalado)
-        return _parse_text_output(stdout)
-
-    # Sin reporte o sin pruebas: puede ser el entorno del subproceso, así que se reintenta aquí.
-    in_process = _run_in_process(root)
-    if _has_tests(in_process):
-        return _parse_json_report(in_process)
-
-    return {"error": _failure_message(root, in_process or report, result)}
-
 
 def _has_tests(report: dict | None) -> bool:
     return bool(report and report.get("tests"))
 
 
-def _failure_message(root: Path, report: dict | None, result) -> str:
+def _failure_message(root: Path, report: dict | None, results: list) -> str:
     """Explica por qué no hay resultados: errores de recolección o salida de pytest."""
     lines = []
     if report is None:
@@ -79,8 +92,8 @@ def _failure_message(root: Path, report: dict | None, result) -> str:
             if collector.get("outcome") == "failed":
                 lines.append(f"Error al cargar {collector.get('nodeid') or '(raíz)'}:")
                 lines.append(_tail(collector.get("longrepr", ""), 8))
-    if result is not None:
-        lines.append(_tail(result.stderr or result.stdout))
+    for result in results:
+        lines.append(_tail(result.stderr or result.stdout, 8))
     return "\n".join(line for line in lines if line)
 
 
@@ -104,7 +117,8 @@ def _project_import_paths(root: Path) -> list[str]:
     return [str(path) for path in paths if path.is_dir()]
 
 
-def _run_subprocess(root: Path, report_path: str) -> subprocess.CompletedProcess:
+def _run_subprocess(root: Path, report_path: str, explicit_plugin: bool = False) -> subprocess.CompletedProcess:
+    plugin_args = []
     env = {
         **os.environ,
         "PYTHONDONTWRITEBYTECODE": "1",
@@ -112,8 +126,14 @@ def _run_subprocess(root: Path, report_path: str) -> subprocess.CompletedProcess
         # están en el site-packages del intérprete, sino en la carpeta de la función).
         "PYTHONPATH": os.pathsep.join(_project_import_paths(root) + [p for p in sys.path if p]),
     }
+    if explicit_plugin:
+        # Si el plugin no se autodescubre (p. ej. faltan los metadatos del paquete en
+        # el bundle de Vercel), se carga a mano; con autodescubrimiento activo se
+        # registraría dos veces, por eso se desactiva solo en este intento.
+        env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+        plugin_args = ["-p", "pytest_jsonreport.plugin"]
     return subprocess.run(
-        [sys.executable, "-m", "pytest", "--json-report", *_pytest_args(root, report_path)],
+        [sys.executable, "-m", "pytest", *plugin_args, "--json-report", *_pytest_args(root, report_path)],
         capture_output=True,
         text=True,
         cwd=str(root),
