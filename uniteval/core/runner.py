@@ -18,6 +18,10 @@ PYTEST_TIMEOUT_SECONDS = 120
 def run_tests(project_path: str) -> dict:
     """
     Ejecuta pytest en el proyecto y devuelve el resumen y el resultado de cada prueba.
+
+    Primero lo intenta en un subproceso (aísla las pruebas del servidor). Si el
+    subproceso no puede ejecutar pytest —por ejemplo en Vercel, donde las
+    dependencias no están en el Python del sistema— lo ejecuta en este proceso.
     """
     root = Path(project_path).expanduser().resolve()
 
@@ -28,43 +32,98 @@ def run_tests(project_path: str) -> dict:
         report_path = tmp.name
 
     try:
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "pytest",
-                "--json-report",
-                f"--json-report-file={report_path}",
-                "--tb=short",
-                "-q",
-                # Sin .pytest_cache ni __pycache__: el proyecto puede estar en un
-                # disco de solo lectura (Vercel) y no se ensucia el repo evaluado.
-                "-p", "no:cacheprovider",
-                str(root),
-            ],
-            capture_output=True,
-            text=True,
-            cwd=str(root),
-            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
-            timeout=PYTEST_TIMEOUT_SECONDS,
-        )
+        result = _run_subprocess(root, report_path)
+        report = _read_report(report_path)
     except subprocess.TimeoutExpired:
         return {"error": f"pytest tardó más de {PYTEST_TIMEOUT_SECONDS} segundos. Verifica que las pruebas no cuelguen."}
-    except FileNotFoundError:
-        return {"error": "No se encontró 'python' o 'pytest'. Asegúrate de tener el entorno activado."}
-
-    # Leer reporte JSON
-    try:
-        with open(report_path, "r", encoding="utf-8") as f:
-            report = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        # Fallback: parsear salida de texto si no hay reporte JSON
-        return _parse_text_output(result.stdout)
+    except OSError:  # No se pudo lanzar el intérprete
+        result, report = None, None
     finally:
         try:
             os.unlink(report_path)
         except OSError:
             pass
 
-    return _parse_json_report(report)
+    if report is not None:
+        return _parse_json_report(report)
+
+    stdout = result.stdout if result is not None else ""
+    if "::" in stdout:
+        # pytest corrió pero sin reporte JSON (pytest-json-report no instalado)
+        return _parse_text_output(stdout)
+
+    report = _run_in_process(root)
+    if report is not None:
+        return _parse_json_report(report)
+
+    detail = _tail((result.stderr or result.stdout) if result is not None else "")
+    return {"error": "No se pudo ejecutar pytest en el proyecto." + (f"\n{detail}" if detail else "")}
+
+
+def _pytest_args(root: Path, report_file: str) -> list[str]:
+    return [
+        f"--json-report-file={report_file}",
+        "--tb=short",
+        "-q",
+        # Sin .pytest_cache ni __pycache__: el proyecto puede estar en un
+        # disco de solo lectura (Vercel) y no se ensucia el repo evaluado.
+        "-p", "no:cacheprovider",
+        str(root),
+    ]
+
+
+def _run_subprocess(root: Path, report_path: str) -> subprocess.CompletedProcess:
+    env = {
+        **os.environ,
+        "PYTHONDONTWRITEBYTECODE": "1",
+        # El subproceso ve los mismos paquetes que el servidor (en Vercel no
+        # están en el site-packages del intérprete, sino en la carpeta de la función).
+        "PYTHONPATH": os.pathsep.join(p for p in sys.path if p),
+    }
+    return subprocess.run(
+        [sys.executable, "-m", "pytest", "--json-report", *_pytest_args(root, report_path)],
+        capture_output=True,
+        text=True,
+        cwd=str(root),
+        env=env,
+        timeout=PYTEST_TIMEOUT_SECONDS,
+    )
+
+
+def _read_report(report_path: str) -> dict | None:
+    try:
+        with open(report_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def _run_in_process(root: Path) -> dict | None:
+    """Ejecuta pytest dentro del servidor y devuelve el reporte JSON, o None si falla."""
+    try:
+        import pytest
+        from pytest_jsonreport.plugin import JSONReport
+    except ImportError:
+        return None
+
+    plugin = JSONReport()
+    previous_cwd = os.getcwd()
+    previous_bytecode = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        os.chdir(root)
+        # Con el plugin pasado como objeto no se usa --json-report (lo registraría dos veces).
+        pytest.main(_pytest_args(root, "none"), plugins=[plugin])
+    except Exception:
+        return None
+    finally:
+        os.chdir(previous_cwd)
+        sys.dont_write_bytecode = previous_bytecode
+    return plugin.report or None
+
+
+def _tail(text: str, lines: int = 15) -> str:
+    return "\n".join(text.strip().splitlines()[-lines:])
 
 
 def _parse_json_report(report: dict) -> dict:

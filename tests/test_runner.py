@@ -22,9 +22,33 @@ def test_run_tests_timeout(tmp_path: Path):
 
 
 def test_run_tests_file_not_found(tmp_path: Path):
-    with patch("uniteval.core.runner.subprocess.run", side_effect=FileNotFoundError()):
+    with patch("uniteval.core.runner.subprocess.run", side_effect=FileNotFoundError()),             patch("uniteval.core.runner._run_in_process", return_value=None):
         result = runner.run_tests(str(tmp_path))
     assert "error" in result
+
+
+def test_run_tests_falls_back_to_in_process_when_subprocess_finds_no_pytest(tmp_path: Path):
+    # Caso Vercel: el intérprete del subproceso no tiene pytest instalado.
+    failed_proc = MagicMock(stdout="", stderr="No module named pytest")
+    in_process_report = {
+        "summary": {"total": 1, "passed": 1},
+        "tests": [{"nodeid": "tests/test_a.py::test_ok", "outcome": "passed", "call": {"duration": 0.1}}],
+    }
+    with patch("uniteval.core.runner.subprocess.run", return_value=failed_proc),             patch("uniteval.core.runner._run_in_process", return_value=in_process_report) as in_process:
+        result = runner.run_tests(str(tmp_path))
+
+    in_process.assert_called_once()
+    assert result["summary"]["passed"] == 1
+    assert result["tests"][0]["function"] == "test_ok"
+
+
+def test_run_tests_reports_error_instead_of_zero_tests(tmp_path: Path):
+    failed_proc = MagicMock(stdout="", stderr="No module named pytest")
+    with patch("uniteval.core.runner.subprocess.run", return_value=failed_proc),             patch("uniteval.core.runner._run_in_process", return_value=None):
+        result = runner.run_tests(str(tmp_path))
+
+    assert "No se pudo ejecutar pytest" in result["error"]
+    assert "No module named pytest" in result["error"]
 
 
 def test_run_tests_json_report(tmp_path: Path):
