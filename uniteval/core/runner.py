@@ -92,8 +92,16 @@ def _pytest_args(root: Path, report_file: str) -> list[str]:
         # Sin .pytest_cache ni __pycache__: el proyecto puede estar en un
         # disco de solo lectura (Vercel) y no se ensucia el repo evaluado.
         "-p", "no:cacheprovider",
+        # El rootdir es siempre el proyecto evaluado, nunca una carpeta superior.
+        f"--rootdir={root}",
         str(root),
     ]
+
+
+def _project_import_paths(root: Path) -> list[str]:
+    """Rutas para importar el código del proyecto aunque no tenga configurado pythonpath."""
+    paths = [root, root / "src"]
+    return [str(path) for path in paths if path.is_dir()]
 
 
 def _run_subprocess(root: Path, report_path: str) -> subprocess.CompletedProcess:
@@ -102,7 +110,7 @@ def _run_subprocess(root: Path, report_path: str) -> subprocess.CompletedProcess
         "PYTHONDONTWRITEBYTECODE": "1",
         # El subproceso ve los mismos paquetes que el servidor (en Vercel no
         # están en el site-packages del intérprete, sino en la carpeta de la función).
-        "PYTHONPATH": os.pathsep.join(p for p in sys.path if p),
+        "PYTHONPATH": os.pathsep.join(_project_import_paths(root) + [p for p in sys.path if p]),
     }
     return subprocess.run(
         [sys.executable, "-m", "pytest", "--json-report", *_pytest_args(root, report_path)],
@@ -133,7 +141,9 @@ def _run_in_process(root: Path) -> dict | None:
     plugin = JSONReport()
     previous_cwd = os.getcwd()
     previous_bytecode = sys.dont_write_bytecode
+    previous_path = list(sys.path)
     sys.dont_write_bytecode = True
+    sys.path[:0] = _project_import_paths(root)
     try:
         os.chdir(root)
         # Con el plugin pasado como objeto no se usa --json-report (lo registraría dos veces).
@@ -143,6 +153,7 @@ def _run_in_process(root: Path) -> dict | None:
     finally:
         os.chdir(previous_cwd)
         sys.dont_write_bytecode = previous_bytecode
+        sys.path[:] = previous_path
     return plugin.report or None
 
 
