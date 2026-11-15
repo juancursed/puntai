@@ -65,6 +65,27 @@ python -m pytest
 
 ---
 
+## Despliegue en Vercel (demo en línea)
+
+La app se despliega como demo de solo lectura que evalúa el proyecto de ejemplo
+`Proyecto_test/proyecto_test_tg` incluido en el repositorio.
+
+1. En [vercel.com](https://vercel.com): **Add New → Project** e importa este repositorio.
+   Vercel detecta FastAPI y usa el punto de entrada `uniteval.app:app` (definido en `pyproject.toml`).
+2. En **Settings → Environment Variables** agrega la API key del modelo que usarás
+   (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY` o `LAGUNA_API_KEY`). Nunca la subas al repositorio.
+3. Pulsa **Deploy**. Cada `git push` a `main` vuelve a desplegar.
+
+Cuando corre en Vercel (variable `VERCEL` definida):
+
+- Solo se puede escanear, ejecutar y evaluar el proyecto de ejemplo.
+- La configuración es de solo lectura; el modelo por defecto es el primero con clave configurada.
+- Los reportes se guardan en `/tmp` y se pierden cuando Vercel recicla la instancia.
+
+> Pon un límite de gasto en tu proveedor de IA: cada visitante usa tu API key.
+
+---
+
 ## Estructura del proyecto
 
 ```

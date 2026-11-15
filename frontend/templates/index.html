@@ -30,7 +30,7 @@
   <div class="topbar-actions">
     <div class="topbar-status">
       <div class="status-dot"></div>
-      Servidor activo · localhost:8080
+      <span id="server-status">Servidor activo</span>
     </div>
     <button class="theme-toggle" id="theme-toggle" type="button" onclick="toggleTheme()" title="Cambiar tema" aria-label="Cambiar entre tema claro y oscuro">
       <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -51,7 +51,7 @@
         <span class="project-name" id="project-name-display">Sin proyecto</span>
       </div>
       <div class="project-path" id="project-path-display">—</div>
-      <button class="link-btn" onclick="openProjectModal()">Cambiar proyecto</button>
+      <button class="link-btn" id="btn-change-project" onclick="openProjectModal()">Cambiar proyecto</button>
     </div>
 
     <div class="model-card">
@@ -85,7 +85,7 @@
 
     <div class="sidebar-footer">
       <div class="status-dot"></div>
-      FastAPI · puerto 8080
+      <span id="server-footer">FastAPI</span>
     </div>
   </div>
 
@@ -164,6 +164,10 @@
 
     <!-- PAGE: CONFIG -->
     <div class="page" id="page-config">
+      <div class="report-notice" id="cfg-readonly-notice" hidden>
+        Demo en línea: se evalúa el proyecto de ejemplo incluido en el repositorio y las claves de API
+        están configuradas en el servidor. Puedes elegir el modelo en el menú lateral.
+      </div>
       <div class="config-section">
         <h3>Proyecto</h3>
         <div class="field">

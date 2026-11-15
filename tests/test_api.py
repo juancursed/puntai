@@ -114,3 +114,31 @@ def test_api_endpoints(tmp_path: Path, monkeypatch):
             },
         )
         assert resp_an_err.status_code == 400
+
+
+def test_vercel_demo_mode_is_read_only_and_limited_to_demo_project(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(config, "IS_VERCEL", True)
+    monkeypatch.setattr(config, "CONFIG_FILE", tmp_path / "config.json")
+    for env_var in config.KEY_ENV_VARS.values():
+        monkeypatch.delenv(env_var, raising=False)
+    monkeypatch.setenv("LAGUNA_API_KEY", "or-key")
+    client = TestClient(app)
+
+    cfg = client.get("/api/config").json()
+    assert cfg["read_only"] is True
+    assert Path(cfg["project_path"]) == config.DEMO_PROJECT_DIR
+    assert cfg["model"] == "laguna"  # el primero con clave configurada
+
+    assert client.post("/api/config", json={"model": "claude"}).status_code == 403
+    assert not (tmp_path / "config.json").exists()
+
+    assert client.post("/api/scan", json={"path": str(tmp_path)}).status_code == 403
+    assert client.post("/api/run", json={"path": str(tmp_path)}).status_code == 403
+    assert client.post("/api/analyze", json={
+        "project_path": str(tmp_path), "test_file": SAMPLE_TEST_FILE, "test_name": "test_1",
+        "test_code": SAMPLE_CODE, "test_result": "passed", "model": "laguna",
+    }).status_code == 403
+
+    scanned = client.post("/api/scan", json={"path": cfg["project_path"]})
+    assert scanned.status_code == 200
+    assert scanned.json()["total_tests"] > 0

@@ -35,11 +35,15 @@ def run_tests(project_path: str) -> dict:
                 f"--json-report-file={report_path}",
                 "--tb=short",
                 "-q",
+                # Sin .pytest_cache ni __pycache__: el proyecto puede estar en un
+                # disco de solo lectura (Vercel) y no se ensucia el repo evaluado.
+                "-p", "no:cacheprovider",
                 str(root),
             ],
             capture_output=True,
             text=True,
             cwd=str(root),
+            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
             timeout=PYTEST_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:

@@ -10,6 +10,7 @@ const MODEL_LABELS = {claude: 'Claude Sonnet 4', openai: 'GPT-4o', laguna: 'Lagu
 const state = {
   projectPath: '',
   model: 'claude',
+  readOnly: false,    // Demo en línea (Vercel): la configuración no se puede guardar
   scannedTests: [],   // [{file, abs_path, tests:[{name,lineno,code,docstring}]}]
   runResults: [],     // [{name,file,function,outcome,duration,message}]
   analyses: {},       // {testName: {quality,score,...}}
@@ -46,6 +47,8 @@ async function loadConfig() {
     document.getElementById('cfg-project-path').value = state.projectPath;
     showKeyStatus(cfg.configured_keys || {});
     document.getElementById('cfg-openrouter-model').value = cfg.openrouter_model || 'poolside/laguna-s-2.1';
+    state.readOnly = Boolean(cfg.read_only);
+    if (state.readOnly) applyReadOnlyMode();
     updateProjectDisplay();
   } catch(e) { console.error('Error cargando config:', e); }
 }
@@ -67,8 +70,16 @@ function showKeyStatus(configured) {
   });
 }
 
+// En la demo en línea solo se elige el modelo; ruta y claves las fija el servidor.
+function applyReadOnlyMode() {
+  document.getElementById('cfg-readonly-notice').hidden = false;
+  document.getElementById('btn-change-project').hidden = true;
+  document.querySelectorAll('#page-config input, #page-config button').forEach(el => { el.disabled = true; });
+}
+
 async function saveConfig() {
   const model = document.getElementById('model-select').value;
+  if (state.readOnly) { state.model = model; return; }
   const projectPath = document.getElementById('cfg-project-path').value || state.projectPath;
   const anthropicKey = document.getElementById('cfg-anthropic-key').value;
   const openaiKey = document.getElementById('cfg-openai-key').value;
@@ -768,6 +779,8 @@ async function api(path, method='GET', body=null) {
 
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('server-status').textContent = 'Servidor activo · ' + location.host;
+  document.getElementById('server-footer').textContent = 'FastAPI · ' + location.host;
   loadConfig();
   loadReports();
   renderAnalysisOverview();

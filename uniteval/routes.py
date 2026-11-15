@@ -14,6 +14,14 @@ from uniteval.schemas import AnalyzeRequest, ConfigUpdate, ProjectRequest, Repor
 router = APIRouter(prefix="/api")
 
 
+def _check_project(path: str) -> None:
+    if not config.is_allowed_project(path):
+        raise HTTPException(
+            status_code=403,
+            detail="En la demo en línea solo se puede evaluar el proyecto de ejemplo incluido.",
+        )
+
+
 def _raise_on_error(result: dict, status_code: int = 400) -> dict:
     if "error" in result:
         raise HTTPException(status_code=status_code, detail=result["error"])
@@ -25,11 +33,17 @@ def _raise_on_error(result: dict, status_code: int = 400) -> dict:
 @router.get("/config")
 async def get_config():
     """Devuelve la configuración; de las claves solo indica si están definidas."""
-    return {**config.load_config(), "configured_keys": config.configured_keys()}
+    return {
+        **config.load_config(),
+        "configured_keys": config.configured_keys(),
+        "read_only": config.IS_VERCEL,
+    }
 
 
-@router.post("/config")
+@router.post("/config", responses={403: {"description": "Configuración de solo lectura (demo)"}})
 async def update_config(body: ConfigUpdate):
+    if config.IS_VERCEL:
+        raise HTTPException(status_code=403, detail="La configuración de la demo en línea es de solo lectura.")
     data = body.model_dump()
     for field, env_var in config.KEY_ENV_VARS.items():
         value = data.pop(field).strip()
@@ -44,18 +58,21 @@ async def update_config(body: ConfigUpdate):
 @router.post("/scan", responses={400: {"description": "Ruta del proyecto inválida"}})
 async def scan(body: ProjectRequest):
     """Escanea el proyecto y devuelve todos los archivos y funciones de prueba."""
+    _check_project(body.path)
     return _raise_on_error(scan_project(body.path))
 
 
 @router.post("/run", responses={400: {"description": "Error al ejecutar pruebas en la ruta indicada"}})
 async def run(body: ProjectRequest):
     """Ejecuta pytest en el proyecto y devuelve resultados."""
+    _check_project(body.path)
     return _raise_on_error(run_tests(body.path))
 
 
 @router.post("/analyze", responses={400: {"description": "API key no configurada"}})
 async def analyze(body: AnalyzeRequest):
     """Envía una prueba y el código fuente que evalúa a la IA y devuelve el análisis."""
+    _check_project(body.project_path)
     api_key = config.api_key_for(body.model)
     if not api_key:
         raise HTTPException(status_code=400, detail=f"API key para '{body.model}' no configurada.")
