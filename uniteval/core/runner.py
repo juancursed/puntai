@@ -44,20 +44,44 @@ def run_tests(project_path: str) -> dict:
         except OSError:
             pass
 
-    if report is not None:
+    if _has_tests(report):
         return _parse_json_report(report)
 
     stdout = result.stdout if result is not None else ""
-    if "::" in stdout:
+    if report is None and "::" in stdout:
         # pytest corrió pero sin reporte JSON (pytest-json-report no instalado)
         return _parse_text_output(stdout)
 
-    report = _run_in_process(root)
-    if report is not None:
-        return _parse_json_report(report)
+    # Sin reporte o sin pruebas: puede ser el entorno del subproceso, así que se reintenta aquí.
+    in_process = _run_in_process(root)
+    if _has_tests(in_process):
+        return _parse_json_report(in_process)
 
-    detail = _tail((result.stderr or result.stdout) if result is not None else "")
-    return {"error": "No se pudo ejecutar pytest en el proyecto." + (f"\n{detail}" if detail else "")}
+    return {"error": _failure_message(root, in_process or report, result)}
+
+
+def _has_tests(report: dict | None) -> bool:
+    return bool(report and report.get("tests"))
+
+
+def _failure_message(root: Path, report: dict | None, result) -> str:
+    """Explica por qué no hay resultados: errores de recolección o salida de pytest."""
+    lines = []
+    if report is None:
+        lines.append("No se pudo ejecutar pytest en el proyecto.")
+    else:
+        exitcode = report.get("exitcode")
+        if exitcode == 5:
+            lines.append(f"pytest no encontró pruebas en '{root}'.")
+        else:
+            lines.append(f"pytest no reportó pruebas (código de salida {exitcode}).")
+        for collector in report.get("collectors", []):
+            if collector.get("outcome") == "failed":
+                lines.append(f"Error al cargar {collector.get('nodeid') or '(raíz)'}:")
+                lines.append(_tail(collector.get("longrepr", ""), 8))
+    if result is not None:
+        lines.append(_tail(result.stderr or result.stdout))
+    return "\n".join(line for line in lines if line)
 
 
 def _pytest_args(root: Path, report_file: str) -> list[str]:
@@ -210,4 +234,42 @@ def _parse_text_output(stdout: str) -> dict:
         "tests": tests,
         "duration": 0,
         "warning": "pytest-json-report no instalado. Instala con: pip install pytest-json-report",
+    }
+
+
+def environment_report(project_dir: Path) -> dict:
+    """Datos para diagnosticar por qué pytest no corre en un servidor (p. ej. Vercel)."""
+    files = sorted(
+        p.relative_to(project_dir).as_posix()
+        for p in project_dir.rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
+    ) if project_dir.is_dir() else []
+
+    versions = {}
+    for module in ("pytest", "pytest_jsonreport"):
+        try:
+            versions[module] = getattr(__import__(module), "__version__", "instalado")
+        except ImportError as e:
+            versions[module] = f"no disponible: {e}"
+
+    probe = None
+    try:
+        completed = subprocess.run(
+            [sys.executable, "-c", "import pytest, pytest_jsonreport; print(pytest.__version__)"],
+            capture_output=True, text=True, timeout=30,
+            env={**os.environ, "PYTHONPATH": os.pathsep.join(p for p in sys.path if p)},
+        )
+        probe = {"returncode": completed.returncode, "output": _tail(completed.stdout + completed.stderr, 5)}
+    except (OSError, subprocess.SubprocessError) as e:
+        probe = {"error": str(e)}
+
+    return {
+        "python": sys.version,
+        "executable": sys.executable,
+        "cwd": os.getcwd(),
+        "project_dir": str(project_dir),
+        "project_exists": project_dir.is_dir(),
+        "project_files": files[:200],
+        "modules": versions,
+        "subprocess_probe": probe,
     }

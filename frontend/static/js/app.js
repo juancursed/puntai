@@ -168,7 +168,8 @@ async function runTests() {
     refreshViews();
     toast(`✓ pytest completado: ${result.summary.passed} passed, ${result.summary.failed} failed`);
   } catch(e) {
-    toast('Error ejecutando pytest: ' + (e.message || ''));
+    console.error('Error ejecutando pytest:', e);
+    toast('Error ejecutando pytest: ' + (e.message || ''), 10000);
   } finally { setLoading('btn-run', false, 'Ejecutar pruebas'); }
 }
 

@@ -98,3 +98,28 @@ def test_run_tests_text_fallback(tmp_path: Path):
     assert result["summary"]["passed"] == 1
     assert result["summary"]["failed"] == 1
     assert "warning" in result
+
+
+def test_run_tests_explains_collection_errors_when_no_tests_run(tmp_path: Path):
+    empty_report = {
+        "exitcode": 2,
+        "summary": {"total": 0},
+        "tests": [],
+        "collectors": [{
+            "nodeid": "tests/test_a.py", "outcome": "failed",
+            "longrepr": "ModuleNotFoundError: No module named 'carrito'",
+        }],
+    }
+
+    def fake_run(cmd, **_kwargs):
+        report_file = next(a.split("=", 1)[1] for a in cmd if a.startswith("--json-report-file="))
+        Path(report_file).write_text(json.dumps(empty_report), encoding="utf-8")
+        return MagicMock(stdout="", stderr="")
+
+    with patch("uniteval.core.runner.subprocess.run", side_effect=fake_run), \
+            patch("uniteval.core.runner._run_in_process", return_value=None) as in_process:
+        result = runner.run_tests(str(tmp_path))
+
+    in_process.assert_called_once()
+    assert "código de salida 2" in result["error"]
+    assert "No module named 'carrito'" in result["error"]
