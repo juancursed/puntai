@@ -19,6 +19,14 @@ const state = {
   reports: [],        // Historial de evaluaciones guardadas
 };
 
+// ── Analítica (Microsoft Clarity) ─────────────────────────────
+// La app es de una sola página: se etiqueta la sección visible para poder
+// filtrar grabaciones y heatmaps por sección en el panel de Clarity.
+function track(kind, ...args) {
+  try { if (typeof window.clarity === 'function') window.clarity(kind, ...args); } catch (e) {}
+}
+track('set', 'dispositivo', window.matchMedia('(max-width: 760px)').matches ? 'movil' : 'escritorio');
+
 // ── Navegación ─────────────────────────────────────────────────
 const MOBILE_QUERY = window.matchMedia('(max-width: 760px)');
 
@@ -28,6 +36,7 @@ function setSidebarOpen(open) {
 }
 
 function toggleSidebar() {
+  if (!document.body.classList.contains('sidebar-open')) track('event', 'abrir_menu');
   setSidebarOpen(!document.body.classList.contains('sidebar-open'));
 }
 
@@ -47,6 +56,8 @@ function showPage(name) {
   document.getElementById('panel-title').textContent = titles[name] || name;
   closeSidebar();
   document.getElementById('page-' + name).scrollTop = 0;
+  track('set', 'seccion', name);
+  track('event', 'ver_' + name);
 }
 
 // ── Toast ──────────────────────────────────────────────────────
@@ -162,6 +173,7 @@ function updateProjectDisplay() {
 
 // ── Escanear proyecto ──────────────────────────────────────────
 async function runScan() {
+  track('event', 'escanear');
   if (!state.projectPath) { openProjectModal(); return; }
   setLoading('btn-scan', true, 'Escaneando...');
   try {
@@ -181,6 +193,7 @@ async function runScan() {
 
 // ── Ejecutar pytest ────────────────────────────────────────────
 async function runTests() {
+  track('event', 'ejecutar_pruebas');
   if (!state.projectPath) return toast('Selecciona un proyecto primero');
   setLoading('btn-run', true, 'Ejecutando...');
   try {
@@ -205,6 +218,7 @@ async function runTests() {
 
 // ── Analizar con IA ────────────────────────────────────────────
 async function analyzeAll() {
+  track('event', 'evaluar_ia');
   if (!state.scannedTests.length) return toast('Escanea el proyecto primero');
   setLoading('btn-analyze', true, 'Analizando...');
 
