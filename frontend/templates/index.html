@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1D9E75">
 <title>UnitEval — Evaluador de pruebas con IA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
@@ -20,6 +21,9 @@
 
 <!-- TOPBAR -->
 <div class="topbar">
+  <button class="menu-toggle" id="menu-toggle" type="button" onclick="toggleSidebar()" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
   <div class="logo">
     <div class="logo-icon">
       <svg viewBox="0 0 16 16"><path d="M2 4h3v8H2zM6.5 2h3v12h-3zM11 6h3v6h-3z"/></svg>
@@ -43,7 +47,8 @@
 <div class="workspace">
 
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+  <div class="sidebar" id="sidebar">
     <div class="project-card" id="project-card">
       <div class="project-tag">Proyecto activo</div>
       <div class="project-name-row">
@@ -93,6 +98,7 @@
   <div class="main">
     <div class="panel-topbar">
       <div class="panel-title" id="panel-title">Resumen</div>
+      <div class="panel-actions">
       <button class="btn" onclick="runScan()" id="btn-scan">
         <span id="btn-scan-label">Escanear proyecto</span>
       </button>
@@ -102,6 +108,7 @@
       <button class="btn btn-primary" onclick="analyzeAll()" id="btn-analyze" disabled>
         <span id="btn-analyze-label">Evaluar con IA</span>
       </button>
+      </div>
     </div>
 
     <div class="history-banner" id="history-banner" style="display:none">

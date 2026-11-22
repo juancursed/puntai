@@ -20,6 +20,24 @@ const state = {
 };
 
 // ── Navegación ─────────────────────────────────────────────────
+const MOBILE_QUERY = window.matchMedia('(max-width: 760px)');
+
+function setSidebarOpen(open) {
+  document.body.classList.toggle('sidebar-open', open);
+  document.getElementById('menu-toggle')?.setAttribute('aria-expanded', String(open));
+}
+
+function toggleSidebar() {
+  setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+}
+
+function closeSidebar() {
+  setSidebarOpen(false);
+}
+
+MOBILE_QUERY.addEventListener?.('change', e => { if (!e.matches) closeSidebar(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -27,6 +45,8 @@ function showPage(name) {
   document.getElementById('nav-' + name).classList.add('active');
   const titles = {summary:'Resumen', tests:'Pruebas detectadas', analysis:'Análisis IA', config:'Configuración'};
   document.getElementById('panel-title').textContent = titles[name] || name;
+  closeSidebar();
+  document.getElementById('page-' + name).scrollTop = 0;
 }
 
 // ── Toast ──────────────────────────────────────────────────────
@@ -114,6 +134,7 @@ function applyProjectPath() {
 
 // ── Modal proyecto ─────────────────────────────────────────────
 function openProjectModal() {
+  closeSidebar();
   document.getElementById('modal-project-path').value = state.projectPath;
   document.getElementById('project-modal').classList.add('open');
 }
